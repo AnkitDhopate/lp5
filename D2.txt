@@ -1,0 +1,98 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from keras.datasets import fashion_mnist
+(X_train, y_train), (X_test, y_test) = fashion_mnist.load_data()
+X_train.shape
+(60000, 28, 28)
+X_test.shape
+(10000, 28, 28)
+np.unique(y_train)
+array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=uint8)
+plt.figure(figsize=(10, 10))
+
+plt.subplot(121)
+plt.imshow(X_train[15500, :, :], cmap='gray')
+plt.title(y_train[15500])
+
+X_train = X_train.reshape(-1, 28, 28, 1)
+X_test = X_test.reshape(-1, 28, 28, 1)
+X_train.shape, X_test.shape
+((60000, 28, 28, 1), (10000, 28, 28, 1))
+X_train.astype('float32')
+X_test.astype('float32')
+
+X_train = X_train/255
+X_test = X_test/255
+from keras.utils import to_categorical
+y_train_enc = to_categorical(y_train)
+y_test_enc = to_categorical(y_test)
+from sklearn.model_selection import train_test_split
+train_X, valid_X, train_label, valid_label = train_test_split(X_train, y_train_enc, test_size=0.2, random_state=13)
+train_X.shape,valid_X.shape,train_label.shape,valid_label.shape
+((48000, 28, 28, 1), (12000, 28, 28, 1), (48000, 10), (12000, 10))
+import keras
+from keras.models import Sequential 
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import BatchNormalization
+from keras.layers import LeakyReLU
+from keras.models import Model
+batch_size=64
+epochs=5
+num_classes=10
+fashion_model = Sequential()
+fashion_model.add(Conv2D(32, kernel_size=(3, 3),activation='linear',padding='same', input_shape=(28,28,1)))
+fashion_model.add(LeakyReLU(alpha=0.1))
+fashion_model.add(MaxPooling2D((2, 2),padding='same'))
+fashion_model.add(Dropout(0.25))
+fashion_model.add(Conv2D(64, (3, 3), activation='linear',padding='same'))
+fashion_model.add(LeakyReLU(alpha=0.1))
+fashion_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+fashion_model.add(Dropout(0.25))
+fashion_model.add(Conv2D(128, (3, 3), activation='linear',padding='same'))
+fashion_model.add(LeakyReLU(alpha=0.1))                  
+fashion_model.add(MaxPooling2D(pool_size=(2, 2),padding='same'))
+fashion_model.add(Dropout(0.4))
+fashion_model.add(Flatten())
+fashion_model.add(Dense(128, activation='linear'))
+fashion_model.add(LeakyReLU(alpha=0.1))           
+fashion_model.add(Dropout(0.3))
+fashion_model.add(Dense(num_classes, activation='softmax'))
+fashion_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(), metrics=['accuracy'])
+fashion_model.summary()
+
+fashion_train = fashion_model.fit(train_X, train_label, batch_size=batch_size,epochs=epochs,verbose=1,validation_data=(valid_X, valid_label))
+
+test_eval = fashion_model.evaluate(X_test, y_test_enc, verbose=1)
+313/313 [==============================] - 7s 21ms/step - loss: 0.2618 - accuracy: 0.9040
+print('Test loss:', test_eval[0])
+print('Test accuracy:', test_eval[1])
+Test loss: 0.26182278990745544
+Test accuracy: 0.9039999842643738
+predicted_classes = fashion_model.predict(X_test)
+313/313 [==============================] - 4s 13ms/step
+predicted_classes = np.argmax(np.round(predicted_classes),axis=1)
+predicted_classes.shape, y_test.shape
+((10000,), (10000,))
+correct = np.where(predicted_classes==y_test)[0]
+print("Found %d correct labels" % len(correct))
+for i, correct in enumerate(correct[:9]):
+    plt.subplot(3,3,i+1)
+    plt.imshow(X_test[correct].reshape(28,28), cmap='gray', interpolation='none')
+    plt.title("Predicted {}, Class {}".format(predicted_classes[correct], y_test[correct]))
+    plt.tight_layout()
+
+incorrect = np.where(predicted_classes!=y_test)[0]
+print("Found %d incorrect labels" % len(incorrect))
+for i, incorrect in enumerate(incorrect[:9]):
+    plt.subplot(3,3,i+1)
+    plt.imshow(X_test[incorrect].reshape(28,28), cmap='gray', interpolation='none')
+    plt.title("Predicted {}, Class {}".format(predicted_classes[incorrect], y_test[incorrect]))
+    plt.tight_layout()
+
+
+from sklearn.metrics import classification_report
+target_names = ["Class {}".format(i) for i in range(num_classes)]
+print(classification_report(y_test, predicted_classes, target_names=target_names))

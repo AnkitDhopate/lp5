@@ -1,0 +1,92 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+data = pd.read_csv('./HousingData.csv')
+data.sample(5)
+data.rename(columns={'MEDV': 'PRICE'}, inplace=True)
+data.sample(5)
+data.info()
+data.isnull().sum()
+data.describe()
+data.duplicated().sum()
+CRIM_mean = data.CRIM.mean()
+data['CRIM'].fillna(value=CRIM_mean, inplace=True)
+ZN_mean = data.ZN.mean()
+data['ZN'].fillna(value=ZN_mean, inplace=True)
+
+INDUS_mean = data.INDUS.mean()
+data['INDUS'].fillna(value=INDUS_mean, inplace=True)
+
+CHAS_mean = data.CHAS.mean()
+data['CHAS'].fillna(value=CHAS_mean, inplace=True)
+
+AGE_mean = data.AGE.mean()
+data['AGE'].fillna(value=AGE_mean, inplace=True)
+
+LSTAT_mean = data.LSTAT.mean()
+data['LSTAT'].fillna(value=LSTAT_mean, inplace=True)
+figure, axis = plt.subplots(ncols=4, nrows=4, figsize=(20, 15))
+index = 0
+axis = axis.flatten()
+
+for key, value in data.items():
+    sns.boxplot(x=key, data=data, ax=axis[index])
+    index += 1
+
+Q1 = data['PRICE'].quantile(0.25)
+Q3 = data['PRICE'].quantile(0.75)
+IQR = Q3-Q1
+
+upper_limit = Q3+1.5*IQR
+lower_limit = Q1-1.5*IQR
+data = data[(data['PRICE']<=upper_limit) & (data['PRICE']>=lower_limit)]
+data.shape
+(466, 14)
+data.info()
+
+sns.histplot(data=data, x=data.PRICE, kde=True)
+correl = data.corr()
+
+plt.figure(figsize=(14, 14))
+sns.heatmap(correl, annot=True)
+X = data.drop(columns=['PRICE'])
+y = data['PRICE']
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=4)
+from sklearn.linear_model import LinearRegression
+regressor = LinearRegression()
+regressor.fit(X_train, y_train)
+LinearRegression()
+y_pred = regressor.predict(X_test)
+from sklearn.metrics import r2_score, mean_squared_error
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
+print("RMSE ", rmse)
+print("R2 ", r2)
+from sklearn.preprocessing import StandardScaler
+
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+import keras
+from keras.layers import Dense, Activation
+from keras.models import Sequential
+
+model = Sequential()
+model.add(Dense(128, activation='relu', input_dim=13))
+model.add(Dense(64, activation='relu'))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(16, activation='relu'))
+model.add(Dense(1))
+
+model.compile(optimizer='adam', loss = 'mean_squared_error')
+model.fit(X_train, y_train, epochs=100)
+
+y_pred = model.predict(X_test)
+3/3 [==============================] - 0s 3ms/step
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
+
+print("RMSE ", rmse)
+print("R2 ", r2)
