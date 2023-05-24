@@ -1,0 +1,72 @@
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+// Parallel reduction for finding the minimum value
+int parallelMin(const vector<int>& arr) {
+    int minVal = arr[0];  // Initialize minVal with the first element of the array
+
+    #pragma omp parallel for reduction(min: minVal)
+    // Execute the following loop in parallel with OpenMP reduction, using min reduction operation
+    for (int i = 1; i < arr.size(); ++i) {
+        if (arr[i] < minVal) {
+            minVal = arr[i];  // Update minVal if a smaller value is found
+        }
+    }
+
+    return minVal;  // Return the minimum value
+}
+
+// Parallel reduction for finding the maximum value
+int parallelMax(const vector<int>& arr) {
+    int maxVal = arr[0];  // Initialize maxVal with the first element of the array
+
+    #pragma omp parallel for reduction(max: maxVal)
+    // Execute the following loop in parallel with OpenMP reduction, using max reduction operation
+    for (int i = 1; i < arr.size(); ++i) {
+        if (arr[i] > maxVal) {
+            maxVal = arr[i];  // Update maxVal if a larger value is found
+        }
+    }
+
+    return maxVal;  // Return the maximum value
+}
+
+// Parallel reduction for calculating the sum
+int parallelSum(const vector<int>& arr) {
+    int sum = 0;  // Initialize sum as 0
+
+    #pragma omp parallel for reduction(+: sum)
+    // Execute the following loop in parallel with OpenMP reduction, using + reduction operation
+    for (int i = 0; i < arr.size(); ++i) {
+        sum += arr[i];  // Accumulate the sum of all elements
+    }
+
+    return sum;  // Return the sum
+}
+
+// Parallel reduction for calculating the average
+double parallelAverage(const vector<int>& arr) {
+    int sum = parallelSum(arr);  // Calculate the sum using parallelSum function
+    double average = static_cast<double>(sum) / arr.size();  // Calculate the average
+
+    return average;  // Return the average
+}
+
+int main() {
+    vector<int> numbers = {5, 8, 2, 7, 1, 6, 3, 9, 4};  // Create a vector of numbers
+
+    int minVal = parallelMin(numbers);  // Find the minimum value using parallelMin function
+    int maxVal = parallelMax(numbers);  // Find the maximum value using parallelMax function
+    int sum = parallelSum(numbers);  // Calculate the sum using parallelSum function
+    double average = parallelAverage(numbers);  // Calculate the average using parallelAverage function
+
+    cout << "Minimum value: " << minVal << endl;  // Print the minimum value
+    cout << "Maximum value: " << maxVal << endl;  // Print the maximum value
+    cout << "Sum: " << sum << endl;  // Print the sum
+    cout << "Average: " << average << endl;  // Print the average
+
+    return 0;
+}

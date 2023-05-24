@@ -1,0 +1,93 @@
+#include <iostream>
+#include <queue>
+#include <stack>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+// Graph class
+class Graph {
+    int numVertices;
+    vector<vector<int>> adjList;  // Adjacency list representation of the graph
+
+public:
+    Graph(int vertices) {
+        numVertices = vertices;  // Initialize the number of vertices
+        adjList.resize(numVertices);  // Resize the adjacency list to accommodate the vertices
+    }
+
+    void addEdge(int src, int dest) {
+        adjList[src].push_back(dest);  // Add the destination to the adjacency list of the source vertex
+        adjList[dest].push_back(src);  // Add the source to the adjacency list of the destination vertex
+    }
+
+    // Breadth First Search
+    void BFS(int startVertex) {
+        vector<bool> visited(numVertices, false);  // Create a visited array to track visited vertices
+        queue<int> q;  // Create a queue for BFS traversal
+
+        visited[startVertex] = true;  // Mark the start vertex as visited
+        q.push(startVertex);  // Enqueue the start vertex
+
+        while (!q.empty()) {
+            int currentVertex = q.front();  // Get the front vertex from the queue
+            cout << currentVertex << " ";  // Print the current vertex
+            q.pop();  // Dequeue the current vertex
+
+            #pragma omp parallel for
+            for (int i = 0; i < adjList[currentVertex].size(); ++i) {
+                int adjacentVertex = adjList[currentVertex][i];  // Get the adjacent vertex
+                if (!visited[adjacentVertex]) {  // If the adjacent vertex is not visited
+                    visited[adjacentVertex] = true;  // Mark it as visited
+                    q.push(adjacentVertex);  // Enqueue the adjacent vertex
+                }
+            }
+        }
+    }
+
+    // Depth First Search
+    void DFS(int startVertex) {
+        vector<bool> visited(numVertices, false);  // Create a visited array to track visited vertices
+        stack<int> s;  // Create a stack for DFS traversal
+
+        visited[startVertex] = true;  // Mark the start vertex as visited
+        s.push(startVertex);  // Push the start vertex onto the stack
+
+        while (!s.empty()) {
+            int currentVertex = s.top();  // Get the top vertex from the stack
+            cout << currentVertex << " ";  // Print the current vertex
+            s.pop();  // Pop the current vertex from the stack
+
+            #pragma omp parallel for
+            for (int i = 0; i < adjList[currentVertex].size(); ++i) {
+                int adjacentVertex = adjList[currentVertex][i];  // Get the adjacent vertex
+                if (!visited[adjacentVertex]) {  // If the adjacent vertex is not visited
+                    visited[adjacentVertex] = true;  // Mark it as visited
+                    s.push(adjacentVertex);  // Push the adjacent vertex onto the stack
+                }
+            }
+        }
+    }
+};
+
+int main() {
+    // Create a graph
+    Graph graph(7);  // Create a graph with 7 vertices
+    graph.addEdge(0, 1);  // Add edges between vertices
+    graph.addEdge(0, 2);
+    graph.addEdge(1, 3);
+    graph.addEdge(1, 4);
+    graph.addEdge(2, 5);
+    graph.addEdge(2, 6);
+
+    cout << "BFS traversal: ";
+    graph.BFS(0);  // Perform BFS traversal starting from vertex 0
+    cout << endl;
+
+    cout << "DFS traversal: ";
+    graph.DFS(0);  // Perform DFS traversal starting from vertex 0
+    cout << endl;
+
+    return 0;
+}

@@ -1,0 +1,168 @@
+#include <iostream>
+#include <vector>
+#include <omp.h>
+
+using namespace std;
+
+// Sequential Bubble Sort
+void bubbleSort(vector<int>& arr) {
+    int n = arr.size();
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+            }
+        }
+    }
+}
+
+// Parallel Bubble Sort
+void parallelBubbleSort(vector<int>& arr) {
+    int n = arr.size();
+    int i, j;
+    bool swapped;
+
+    for (i = 0; i < n - 1; ++i) {
+        swapped = false;
+
+        #pragma omp parallel for private(j) shared(arr, swapped)
+        for (j = 0; j < n - i - 1; ++j) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
+                swapped = true;
+            }
+        }
+
+        if (!swapped) {
+            break;
+        }
+    }
+}
+
+// Sequential Merge Sort
+void merge(vector<int>& arr, int low, int mid, int high) {
+    int n1 = mid - low + 1;
+    int n2 = high - mid;
+
+    vector<int> left(n1);
+    vector<int> right(n2);
+
+    for (int i = 0; i < n1; ++i) {
+        left[i] = arr[low + i];
+    }
+    for (int j = 0; j < n2; ++j) {
+        right[j] = arr[mid + 1 + j];
+    }
+
+    int i = 0, j = 0, k = low;
+    while (i < n1 && j < n2) {
+        if (left[i] <= right[j]) {
+            arr[k] = left[i];
+            ++i;
+        } else {
+            arr[k] = right[j];
+            ++j;
+        }
+        ++k;
+    }
+
+    while (i < n1) {
+        arr[k] = left[i];
+        ++i;
+        ++k;
+    }
+
+    while (j < n2) {
+        arr[k] = right[j];
+        ++j;
+        ++k;
+    }
+}
+
+void mergeSort(vector<int>& arr, int low, int high) {
+    if (low < high) {
+        int mid = low + (high - low) / 2;
+
+        mergeSort(arr, low, mid);
+        mergeSort(arr, mid + 1, high);
+
+        merge(arr, low, mid, high);
+    }
+}
+
+// Parallel Merge Sort
+void parallelMergeSort(vector<int>& arr, int low, int high) {
+    if (low < high) {
+        int mid = low + (high - low) / 2;
+
+        #pragma omp parallel sections
+        {
+            #pragma omp section
+            {
+                parallelMergeSort(arr, low, mid);
+            }
+
+            #pragma omp section
+            {
+                parallelMergeSort(arr, mid + 1, high);
+            }
+        }
+
+        merge(arr, low, mid, high);
+    }
+}
+
+// Generate random numbers
+vector<int> generateRandomNumbers(int size) {
+    vector<int> numbers(size);
+    srand(time(nullptr));
+    for (int i = 0; i < size; ++i) {
+        numbers[i] = rand() % size;
+    }
+    return numbers;
+}
+
+// Measure the execution time of a sorting algorithm
+template<typename SortFunc>
+double measurePerformance(SortFunc sortFunc, vector<int>& arr) {
+    high_resolution_clock::time_point startTime = high_resolution_clock::now();
+    sortFunc(arr);
+    high_resolution_clock::time_point endTime = high_resolution_clock::now();
+    duration<double> timeSpan = duration_cast<duration<double>>(endTime - startTime);
+    return timeSpan.count();
+}
+
+int main() {
+    int size = 100000;  // Size of the array
+
+    // Generate random numbers
+    vector<int> numbers = generateRandomNumbers(size);
+
+    // Perform sequential Bubble Sort and measure the execution time
+    vector<int> sequentialBubbleSortNumbers = numbers;
+    double sequentialBubbleSortTime = measurePerformance(bubbleSort, sequentialBubbleSortNumbers);
+
+    // Perform parallel Bubble Sort and measure the execution time
+    vector<int> parallelBubbleSortNumbers = numbers;
+    double parallelBubbleSortTime = measurePerformance(parallelBubbleSort, parallelBubbleSortNumbers);
+
+    // Perform sequential Merge Sort and measure the execution time
+    vector<int> sequentialMergeSortNumbers = numbers;
+    double sequentialMergeSortTime = measurePerformance([&](vector<int>& arr) {
+        mergeSort(arr, 0, arr.size() - 1);
+    }, sequentialMergeSortNumbers);
+
+    // Perform parallel Merge Sort and measure the execution time
+    vector<int> parallelMergeSortNumbers = numbers;
+    double parallelMergeSortTime = measurePerformance([&](vector<int>& arr) {
+        parallelMergeSort(arr, 0, arr.size() - 1);
+    }, parallelMergeSortNumbers);
+
+    // Output the results
+    cout << "Sequential Bubble Sort Time: " << sequentialBubbleSortTime << " seconds" << endl;
+    cout << "Parallel Bubble Sort Time: " << parallelBubbleSortTime << " seconds" << endl;
+    cout << "Sequential Merge Sort Time: " << sequentialMergeSortTime << " seconds" << endl;
+    cout << "Parallel Merge Sort Time: " << parallelMergeSortTime << " seconds" << endl;
+
+    return 0;
+}

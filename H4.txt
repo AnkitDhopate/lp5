@@ -1,0 +1,140 @@
+#include <iostream>
+#include <cuda_runtime.h>
+
+// Kernel function for vector addition
+__global__ void vectorAddition(const int* a, const int* b, int* c, int size) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) {
+        c[i] = a[i] + b[i];
+    }
+}
+
+// Kernel function for matrix multiplication
+__global__ void matrixMultiplication(const int* a, const int* b, int* c, int rowsA, int colsA, int colsB) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < rowsA && col < colsB) {
+        int sum = 0;
+        for (int k = 0; k < colsA; ++k) {
+            sum += a[row * colsA + k] * b[k * colsB + col];
+        }
+        c[row * colsB + col] = sum;
+    }
+}
+
+int main() {
+    // Vector addition
+    int vectorSize = 1000000;  // Size of the vectors
+
+    // Allocate memory on the host (CPU)
+    int* hostA = new int[vectorSize];
+    int* hostB = new int[vectorSize];
+    int* hostC = new int[vectorSize];
+
+    // Initialize the input vectors
+    for (int i = 0; i < vectorSize; ++i) {
+        hostA[i] = i;
+        hostB[i] = i * 2;
+    }
+
+    // Allocate memory on the device (GPU)
+    int* deviceA;
+    int* deviceB;
+    int* deviceC;
+    cudaMalloc((void**)&deviceA, vectorSize * sizeof(int));
+    cudaMalloc((void**)&deviceB, vectorSize * sizeof(int));
+    cudaMalloc((void**)&deviceC, vectorSize * sizeof(int));
+
+    // Copy input vectors from host to device
+    cudaMemcpy(deviceA, hostA, vectorSize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceB, hostB, vectorSize * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define the block size and grid size for vector addition
+    int blockSize = 256;
+    int gridSize = (vectorSize + blockSize - 1) / blockSize;
+
+    // Launch the kernel for vector addition
+    vectorAddition<<<gridSize, blockSize>>>(deviceA, deviceB, deviceC, vectorSize);
+
+    // Copy the result vector from device to host
+    cudaMemcpy(hostC, deviceC, vectorSize * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print the result vector
+    std::cout << "Vector Addition Result: ";
+    for (int i = 0; i < vectorSize; ++i) {
+        std::cout << hostC[i] << " ";
+    }
+    std::cout << std::endl;
+
+    // Matrix multiplication
+    int rowsA = 1000;  // Number of rows in matrix A
+    int colsA = 1000;  // Number of columns in matrix A
+    int colsB = 1000;  // Number of columns in matrix B
+
+    // Allocate memory on the host (CPU)
+    int* hostMatrixA = new int[rowsA * colsA];
+    int* hostMatrixB = new int[colsA * colsB];
+    int* hostMatrixC = new int[rowsA * colsB];
+
+    // Initialize the input matrices
+    for (int i = 0; i < rowsA; ++i) {
+        for (int j = 0; j < colsA; ++j) {
+            hostMatrixA[i * colsA + j] = i + j;
+        }
+    }
+    for (int i = 0; i < colsA; ++i) {
+        for (int j = 0; j < colsB; ++j) {
+            hostMatrixB[i * colsB + j] = i + j;
+        }
+    }
+
+    // Allocate memory on the device (GPU)
+    int* deviceMatrixA;
+    int* deviceMatrixB;
+    int* deviceMatrixC;
+    cudaMalloc((void**)&deviceMatrixA, rowsA * colsA * sizeof(int));
+    cudaMalloc((void**)&deviceMatrixB, colsA * colsB * sizeof(int));
+    cudaMalloc((void**)&deviceMatrixC, rowsA * colsB * sizeof(int));
+
+    // Copy input matrices from host to device
+    cudaMemcpy(deviceMatrixA, hostMatrixA, rowsA * colsA * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceMatrixB, hostMatrixB, colsA * colsB * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define the block size and grid size for matrix multiplication
+    dim3 blockSizeMatrix(16, 16);
+    dim3 gridSizeMatrix((colsB + blockSizeMatrix.x - 1) / blockSizeMatrix.x,
+                        (rowsA + blockSizeMatrix.y - 1) / blockSizeMatrix.y);
+
+    // Launch the kernel for matrix multiplication
+    matrixMultiplication<<<gridSizeMatrix, blockSizeMatrix>>>(deviceMatrixA, deviceMatrixB, deviceMatrixC,
+                                                              rowsA, colsA, colsB);
+
+    // Copy the result matrix from device to host
+    cudaMemcpy(hostMatrixC, deviceMatrixC, rowsA * colsB * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print the result matrix
+    std::cout << "Matrix Multiplication Result:" << std::endl;
+    for (int i = 0; i < rowsA; ++i) {
+        for (int j = 0; j < colsB; ++j) {
+            std::cout << hostMatrixC[i * colsB + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // Free memory on the host and device
+    delete[] hostA;
+    delete[] hostB;
+    delete[] hostC;
+    delete[] hostMatrixA;
+    delete[] hostMatrixB;
+    delete[] hostMatrixC;
+    cudaFree(deviceA);
+    cudaFree(deviceB);
+    cudaFree(deviceC);
+    cudaFree(deviceMatrixA);
+    cudaFree(deviceMatrixB);
+    cudaFree(deviceMatrixC);
+
+    return 0;
+}
